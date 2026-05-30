@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Spec | Dekoder VIN i Wyszukiwarka Pojazdów</title>
+    <style>
+        :root {
+            --primary-color: #e11d48; /* Czerwony/akcent z Auto-Spec */
+            --primary-hover: #be123c;
+            --dark-bg: #1e293b;
+            --darker-bg: #0f172a;
+            --light-bg: #f8fafc;
+            --text-main: #334155;
+            --text-light: #f8fafc;
+            --border-color: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Pasek nawigacyjny identyczny jak na Auto-Spec */
+        nav {
+            background-color: var(--darker-bg);
+            color: var(--text-light);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+
+        .logo span {
+            color: var(--primary-color);
+        }
+
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text-light);
+        }
+
+        /* Sekcja HERO */
+        .hero {
+            background-color: var(--dark-bg);
+            color: var(--text-light);
+            text-align: center;
+            padding: 50px 20px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .hero h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .hero p {
+            color: #94a3b8;
+            font-size: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Główny kontener aplikacji */
+        .main-container {
+            max-width: 850px;
+            width: 100%;
+            margin: -30px auto 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        /* Karty i przełączniki (Tabs) */
+        .search-card {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .tab-btn:hover {
+            background: #e2e8f0;
+            color: var(--darker-bg);
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .tab-content {
+            padding: 30px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Formularze i elementy wejścia */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--dark-bg);
+        }
+
+        .input-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            color: var(--darker-bg);
+            background-color: #fff;
+            transition: border-color 0.3s;
+        }
+
+        .input-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        input.vin-input {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Przyciski wyszukiwania */
+        .btn-search {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--darker-bg);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .btn-search:hover {
+            background-color: var(--primary-color);
+        }
+
+        /* Powiadomienia i statusy */
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .error-message {
+            display: none;
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border: 1px solid #fca5a5;
+            font-size: 14px;
+        }
+
+        /* Sekcja z wynikami */
+        .results-section {
+            display: none;
+            margin-top: 25px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-section h2 {
+            font-size: 20px;
+            color: var(--darker-bg);
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .info-card {
+            background: #f8fafc;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border: 1px solid #edf2f7;
+        }
+
+        .info-card span {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 30pxpx;
+        }
+
+        .info-card strong {
+            font-size: 15px;
+            color: var(--darker-bg);
+        }
+
+        /* Specjalny duży baner przekierowania do serwisu */
+        .service-redirect-box {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 5px solid var(--primary-color);
+            margin-top: 10px;
+        }
+
+        .service-redirect-box h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .service-redirect-box p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .btn-redirect {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 15px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-redirect:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        /* Stopka identyczna z Auto-Spec */
+        footer {
+            background-color: var(--darker-bg);
+            color: #94a3b8;
+            padding: 40px 20px;
+            margin-top: auto;
+            border-top: 3px solid var(--primary-color);
+        }
+
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            font-size: 14px;
+        }
+
+        .footer-section h4 {
+            color: var(--text-light);
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-section p {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            max-width: 1100px;
+            margin: 30px auto 0 auto;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">🛠 AUTO-SPEC <span>| DEKODER</span></div>
+        <div class="nav-links">
+            <a href="https://auto-spec-warsztat.onrender.com/">Serwis</a>
+            <a href="#" class="active">Dekoder VIN</a>
+            <a href="https://auto-spec-warsztat.onrender.com/sklep">Sklep</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Wyszukiwarka i Baza Pojazdów</h1>
+        <p>Sprawdź dane techniczne samochodu po numerze VIN lub wybierz markę i model, aby przejść do panelu obsługi serwisowej.</p>
+    </div>
+
+    <div class="main-container">
+        <div class="search-card">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('vin-tab')">Szukaj po numerze VIN</button>
+                <button class="tab-btn" onclick="switchTab('model-tab')">Szukaj po Marce i Modelu</button>
+            </div>
+
+            <div id="vin-tab" class="tab-content active">
+                <div class="form-group">
+                    <label for="vinInput">Wprowadź 17-znakowy numer VIN:</label>
+                    <input type="text" id="vinInput" class="input-control vin-input" placeholder="Np. 1FA6P8CF0H5XXXXXX" maxlength="17">
+                </div>
+                <button class="btn-search" onclick="searchByVin()">Dekoduj VIN</button>
+            </div>
+
+            <div id="model-tab" class="tab-content">
+                <div class="form-group">
+                    <label for="brandSelect">Wybierz markę pojazdu:</label>
+                    <select id="brandSelect" class="input-control" onchange="updateModels()">
+                        <option value="">-- Wybierz markę --</option>
+                        <option value="Audi">Audi</option>
+                        <option value="BMW">BMW</option>
+                        <option value="Ford">Ford</option>
+                        <option value="Opel">Opel</option>
+                        <option value="Toyota">Toyota</option>
+                        <option value="Volkswagen">Volkswagen</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modelSelect">Wybierz model:</label>
+                    <select id="modelSelect" class="input-control" disabled>
+                        <option value="">-- Najpierw wybierz markę --</option>
+                    </select>
+                </div>
+                <button class="btn-search" onclick="searchByModel()">Sprawdź dostępność i serwisuj</button>
+            </div>
+        </div>
+
+        <div id="loader" class="loader">Trwa wyszukiwanie w bazie danych...</div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <div id="resultsSection" class="results-section">
+            <h2 id="resultsTitle">Specyfikacja techniczna pojazdu</h2>
+            
+            <div class="info-grid" id="infoGrid">
+                </div>
+
+            <div class="service-redirect-box">
+                <h3>Potrzebujesz serwisu dla tego auta?</h3>
+                <p>Zdiagnozowaliśmy parametry pojazdu. Przejdź do serwisu Auto-Spec, aby umówić wizytę online, sprawdzić ceny części lub skonsultować się z mechanikiem.</p>
+                <a href="https://auto-spec-warsztat.onrender.com" class="btn-redirect">Umów wizytę w Auto-Spec →</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>KONTAKT</h4>
+                <p>📞 <strong>Telefon:</strong> +48 123 456 789</p>
+                <p>📧 <strong>Email:</strong> kontakt@auto-spec.pl</p>
+                <p>📍 <strong>Adres:</strong> ul. Warsztatowa 1, 32-551 Babice</p>
+            </div>
+            <div class="footer-section">
+                <h4>GODZINY OTWARCIA</h4>
+                <p>Poniedziałek - Piątek: 08:00 - 18:00</p>
+                <p>Sobota: 09:00 - 14:00</p>
+                <p>Niedziela: Zamknięte</p>
+            </div>
+            <div class="footer-section">
+                <h4>O NAS</h4>
+                <p>Jesteśmy profesjonalnym serwisem z wieloletnim doświadczeniem. Dbamy o Twoje auto jak o własne! Skorzystaj z naszego dekodera i sprawdź naszą ofertę.</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 Auto-Spec Warsztat Samochodowy Babice. Wszystkie prawa zastrzeżone.
+        </div>
+    </footer>
+
+    <script>
+        // Baza modeli przypisanych do marek
+        const carModels = {
+            "Audi": ["A3", "A4", "A6", "Q5", "A8"],
+            "BMW": ["Seria 3 (E90/F30)", "Seria 5 (F10/G30)", "X3", "X5"],
+            "Ford": ["Focus", "Mondeo", "Fiesta", "Kuga", "Mustang"],
+            "Opel": ["Astra", "Insignia", "Corsa", "Mokka"],
+            "Toyota": ["Corolla", "Yaris", "Avensis", "RAV4", "Prius"],
+            "Volkswagen": ["Golf", "Passat", "Tiguan", "Polo" ]
+        };
+
+        // Funkcja przełączania zakładki (VIN / Marka i Model)
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Ukryj stare wyniki przy przełączaniu zakładek
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Aktualizacja listy modeli na podstawie wybranej marki
+        function updateModels() {
+            const brandSelect = document.getElementById('brandSelect');
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedBrand = brandSelect.value;
+
+            modelSelect.innerHTML = '';
+
+            if (!selectedBrand) {
+                modelSelect.innerHTML = '<option value="">-- Najpierw wybierz markę --</option>';
+                modelSelect.disabled = true;
+                return;
+            }
+
+            modelSelect.disabled = false;
+            const models = carModels[selectedBrand];
+            
+            // Dodaj domyślną opcję pustą
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = "";
+            defaultOpt.text = "-- Wybierz model --";
+            modelSelect.appendChild(defaultOpt);
+
+            models.forEach(model => {
+                const opt = document.createElement('option');
+                opt.value = model;
+                opt.text = model;
+                modelSelect.appendChild(opt);
+            });
+        }
+
+        // METODA 1: Wyszukiwanie po VIN (Przez darmowe zewnętrzne API NHTSA)
+        async function searchByVin() {
+            const vin = document.getElementById('vinInput').value.trim().toUpperCase();
+            const loader = document.getElementById('loader');
+            const errorDiv = document.getElementById('errorMessage');
+            const resultsSection = document.getElementById('resultsSection');
+            const infoGrid = document.getElementById('infoGrid');
+            const resultsTitle = document.getElementById('resultsTitle');
+
+            errorDiv.style.display = 'none';
+            resultsSection.style.display = 'none';
+            infoGrid.innerHTML = '';
+
+            if (vin.length !== 17) {
+                showError('Numer VIN musi składać się dokładnie z 17 znaków.');
+                return;
+            }
+
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+                if (!response.ok) throw new Error('Błąd połączenia z bazą danych API.');
+
+                const data = await response.json();
+                loader.style.display = 'none';
+
+                if (data.Results && data.Results.length > 0) {
+                    const usefulFields = {
+                        'Marka': 'Make',
+                        'Model': 'Model',
+                        'Rok modelowy': 'ModelYear',
+                        'Typ nadwozia': 'BodyClass',
+                        'Kraj produkcji': 'PlantCountry',
+                        'Typ paliwa': 'FuelTypePrimary',
+                        'Pojemność silnika (L)': 'DisplacementL'
+                    };
+
+                    let hasData = false;
+
+                    for (const [polishLabel, apiKey] of Object.entries(usefulFields)) {
+                        const element = data.Results.find(item => item.Variable === apiKey);
+                        if (element && element.Value && element.Value !== "Not Applicable") {
+                            hasData = true;
+                            addInfoCard(polishLabel, element.Value);
+                        }
+                    }
+
+                    if (hasData) {
+                        resultsTitle.innerText = `Wyniki dekodowania VIN: ${vin}`;
+                        resultsSection.style.display = 'block';
+                    } else {
+                        showError('Brak szczegółowych danych technicznych dla tego numeru VIN w darmowej bazie.');
+                    }
+                } else {
+                    showError('Nie odnaleziono pojazdu o podanym numerze VIN.');
+                }
+            } catch (error) {
+                loader.style.display = 'none';
+                showError('Wystąpił problem sieciowy: ' + error.message);
+            }
+        }
+
+        // METODA 2: Wyszukiwanie po Marce i Modelu z bazy selectów
+        function searchByModel() {
+            const brand = document.getElementById('brandSelect').value;
+            const model = document.getElementById('modelSelect').value;
+            const resultsSection = document.getElementById('resultsSection');
+            const infoGrid = document.getElementById('infoGrid');
+            const errorDiv = document.getElementById('errorMessage');
+            const resultsTitle = document.getElementById('resultsTitle');
+
+            errorDiv.style.display = 'none';
+            resultsSection.style.display = 'none';
+            infoGrid.innerHTML = '';
+
+            if (!brand || !model) {
+                showError('Proszę wybrać zarówno markę, jak i model pojazdu z listy.');
+                return;
+            }
+
+            // Tworzenie przykładowych danych dla wybranego modelu lokalnie
+            resultsTitle.innerText = `Wybrany pojazd: ${brand} ${model}`;
+            
+            addInfoCard('Wybrana Marka', brand);
+            addInfoCard('Wybrany Model', model);
+            addInfoCard('Status bazy serwisowej', 'Dostępny w Auto-Spec');
+            addInfoCard('Zalecany przegląd', 'Co 15 000 km / 1 rok');
+            addInfoCard('Dedykowane wsparcie', 'Pełna diagnostyka komputerowa');
+
+            resultsSection.style.display = 'block';
+        }
+
+        // Pomocnicza funkcja dodawania kafelków danych
+        function addInfoCard(label, value) {
+            const infoGrid = document.getElementById('infoGrid');
+            const card = document.createElement('div');
+            card.className = 'info-card';
+            card.innerHTML = `
+                <span>${label}</span>
+                <strong>${value}</strong>
+            `;
+            infoGrid.appendChild(card);
+        }
+
+        // Pomocnicza funkcja pokazywania błędów
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerText = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
